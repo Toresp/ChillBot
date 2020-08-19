@@ -1,42 +1,5 @@
-import youtube_dl as youtube_dl
-
-import Almacen
-import discord
-import configparser
-import asyncio
-import youtube_dl
-
-from discord.ext import commands
-
-config = configparser.ConfigParser()
-config.sections()
-config.read('Config.ini')
-token = config ['DatosBase'] ['token']
-
-youtube_dl.utils.bug_reports_message = lambda: ''
-
-ytdl_format_options = {
-    'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
-}
-
-ffmpeg_options = {
-    'options': '-vn'
-}
-
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=10):
+    def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
 
         self.data = data
@@ -129,14 +92,5 @@ class Music(commands.Cog):
             ctx.voice_client.stop()
 
 
-bot = commands.Bot(command_prefix=commands.when_mentioned_or(">"),
+bot = commands.Bot(command_prefix=commands.when_mentioned_or("!"),
                    description='Relatively simple music bot example')
-
-@bot.event
-async def on_ready():
-    print('Logged in as {0} ({0.id})'.format(bot.user))
-    print('------')
-
-bot.add_cog(Music(bot))
-bot.run(token)
-Almacen.style("chill")
