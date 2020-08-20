@@ -11,7 +11,7 @@ from discord.ext import commands
 config = configparser.ConfigParser()
 config.sections()
 config.read('Config.ini')
-token = config ['DatosBase'] ['token']
+token = config['DatosBase']['token']
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -26,7 +26,7 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+    'source_address': '0.0.0.0'  # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
 ffmpeg_options = {
@@ -35,8 +35,9 @@ ffmpeg_options = {
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
+
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=10):
+    def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
 
         self.data = data
@@ -44,17 +45,17 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.title = data.get('title')
         self.url = data.get('url')
 
-        @classmethod
-        async def from_url(cls, url, *, loop=None, stream=False):
-            loop = loop or asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
-            if 'entries' in data:
-                # take first item from a playlist
-                data = data['entries'][0]
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
 
-            filename = data['url'] if stream else ytdl.prepare_filename(data)
-            return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options, executable='./ffmpeg/ffmpeg.exe'), data=data)
 
 
 class Music(commands.Cog):
@@ -71,26 +72,20 @@ class Music(commands.Cog):
         await channel.connect()
 
     @commands.command()
-    async def play(self, ctx, *, query):
-        """Plays a file from the local filesystem"""
-
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
-        ctx.voice_client.play(source, after=lambda e: print('Player error: %s' % e) if e else None)
-
-        await ctx.send('Now playing: {}'.format(query))
-
-    @commands.command()
-    async def yt(self, ctx, *, url):
-        """Plays from a url (almost anything youtube_dl supports)"""
+    async def play(self, ctx, style):
+        """Reproduce una canción aletoria de nuestro repertorio según el estilo indicado"""
 
         async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop)
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-
-        await ctx.send('Now playing: {}'.format(player.title))
+            style = Almacen.style(style)
+            if style == 'no':
+                await ctx.send('Error de Estilo los válidos actualmente son: Chill, Japanese_Type')
+            else:
+                player = await YTDLSource.from_url(Almacen.style(""), loop=self.bot.loop, stream=True)
+                ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+                await ctx.send('Now playing: {}'.format(player.title))
 
     @commands.command()
-    async def stream(self, ctx, *, url):
+    async def play_re(self, ctx, *, url):
         """Streams from a url (same as yt, but doesn't predownload)"""
 
         async with ctx.typing():
@@ -116,8 +111,7 @@ class Music(commands.Cog):
         await ctx.voice_client.disconnect()
 
     @play.before_invoke
-    @yt.before_invoke
-    @stream.before_invoke
+    @play_re.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:
@@ -132,11 +126,12 @@ class Music(commands.Cog):
 bot = commands.Bot(command_prefix=commands.when_mentioned_or(">"),
                    description='Relatively simple music bot example')
 
+
 @bot.event
 async def on_ready():
     print('Logged in as {0} ({0.id})'.format(bot.user))
     print('------')
 
+
 bot.add_cog(Music(bot))
 bot.run(token)
-Almacen.style("chill")
