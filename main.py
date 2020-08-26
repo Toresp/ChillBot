@@ -1,17 +1,23 @@
 import youtube_dl as youtube_dl
-
 import Almacen
 import discord
 import configparser
 import asyncio
 import youtube_dl
-
 from discord.ext import commands
 
+configfile = "Config.ini"
 config = configparser.ConfigParser()
+result = config.read(configfile)
+if not result:  # si no existe archivo de configuración se crea una plantilla
+    config['DISCORD_BOT'] = {
+        "token": "Insert_Token_Here"
+    }
+    with open(configfile, "w") as file:
+        config.write(file)
 config.sections()
-config.read('Config.ini')
-token = config['DatosBase']['token']
+config.read(configfile)
+token = config['DISCORD_BOT']['token']
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -72,17 +78,15 @@ class Music(commands.Cog):
         await channel.connect()
 
     @commands.command()
-    async def play(self, ctx, style):
-        """Reproduce una canción aletoria de nuestro repertorio según el estilo indicado"""
+    async def play(self, ctx, *, url):
+        """Reproduce una canción aletoria de nuestro repertorio"""
 
         async with ctx.typing():
-            style = Almacen.style(style)
-            if style == 'no':
-                await ctx.send('Error de Estilo los válidos actualmente son: Chill, Japanese_Type')
-            else:
-                player = await YTDLSource.from_url(Almacen.style(""), loop=self.bot.loop, stream=True)
-                ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-                await ctx.send('Now playing: {}'.format(player.title))
+            url = Almacen.style(url)
+            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+
+        await ctx.send('Now playing: {}'.format(player.title))
 
     @commands.command()
     async def play_re(self, ctx, *, url):
